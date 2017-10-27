@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>Dashboard</title>
+	{% load staticfiles %}
+	<link rel="stylesheet" type="text/css" href="{% static 'example/css/bootstrap.min.css' %}">
+	<script type="text/javascript" src="http://localhost:5500/socket.io/socket.io.js"></script>
+	<script type="text/javascript" src="http://localhost:5500/client/ishout.client.js"></script>
+	<script src="https://code.jquery.com/jquery-3.2.1.min.js" integrity="sha256-hwg4gsxgFZhOsEEamdOYGBf13FyQuiTwlAQgxVSNgt4=" crossorigin="anonymous"></script>
+
+	<script type="text/javascript">
+		ishout.on('alertchannel', function(data){
+			alert(data.msg);
+		}).on('{{channel_name}}', function(data){
+			$('.chat').append('<p><b>'+ data.username +': </b>'+data.msg+'</p>')
+		});
+
+		ishout.init();
+	</script>
+</head>
+<body>
+	<div class="container">
+		<section class="heading">
+			<div class="row">
+				<h1> Chat Room - <small>Welcome {{user.username}} <small><u><a href="/accounts/logout">Logout</a></u></small></small></h1>
+			</div>
+		</section>
+		<section class="chat-log">
+			<div class="row">
+				<div class="chat">
+					{% for log in logs %}
+						<div class="row message-bubble">
+							{% ifnotequal log.sender_id|stringformat:"s" user.username %}
+								<p>{{log.sender_id}} : {{log.messages}} | {{log.date}}</p>
+							{% else %}
+								<p><b>{{log.sender_id}} : </b>{{log.messages}} | {{log.date}}</p>
+							{% endifnotequal%}
+						</div>
+					{%endfor%}
+				</div>
+			</div>
+		</section>
+
+		<section class="chat-form">
+			<div class="row">
+				{%for user in users%}
+				<div class="col-md-12">
+					<form action="" method="POST">
+						{% csrf_token %}
+						<div class="form-group">
+							<input type="text" name="msg" id="msg" class="form-control">
+							<button type="submit" name="submit" id="submit">SEND</button>
+							<!--  user.id & user.username punya opponent, username punya self  -->
+							<a href="/alert/?user={{user.id}}&username={{user.username}}&user_id_sender={{user_id}}&username_sender={{username}}"> Send Alert Notification</a>
+						</div>
+					</form>
+				</div>
+
+				<script type="text/javascript">
+					$(document).ready(function(){
+						var csrftoken = $('input[name="csrfmiddlewaretoken"]').val();
+						function csrfSafeMethod(method) {
+						    // these HTTP methods do not require CSRF protection
+						    return (/^(GET|HEAD|OPTIONS|TRACE)$/.test(method));
+						}
+						$.ajaxSetup({
+						    beforeSend: function(xhr, settings) {
+						        if (!csrfSafeMethod(settings.type) && !this.crossDomain) {
+						            xhr.setRequestHeader("X-CSRFToken", csrftoken);
+						        }
+						    }
+						});
+						$("#submit").click(function(){
+							var msg = $("#msg").val();
+							$.ajax({
+								type: "POST",
+								url: "/send/?user={{user.id}}&username={{user.username}}&user_id_sender={{user_id}}&username_sender={{username}}",
+								data: { msg: msg}
+							}).done(function(){
+								$('.chat').append('<div class="row message-bubble"><p>{{username}}: '+msg+'</p></div>')
+							})
+							$("#msg").val("");
+							return false;
+						});
+					})
+				</script>
+
+				{%empty%}
+					<b>No users found</b>
+				{%endfor%}
+			</div>
+		</section>
+	</div>
+</body>
+</html>
